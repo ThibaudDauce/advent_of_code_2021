@@ -1,5 +1,6 @@
 fn main() {
     part1();
+    part2();
 }
 
 fn part1() {
@@ -16,6 +17,27 @@ fn part1() {
         .count();
 
     println!("Part 1: {}", result);
+}
+
+fn part2() {
+    let digits: Vec<u32> = raw_input()
+        .trim()
+        .lines()
+        .map(|line| line.trim())
+        .map(|digit| digit.parse().unwrap())
+        .collect();
+
+    let sums: Vec<u32> = digits
+        .windows(3)
+        .map(|digits| digits.iter().sum())
+        .collect();
+
+    let result = sums
+        .windows(2)
+        .filter(|digits| digits[0] < digits[1])
+        .count();
+
+    println!("Part 2: {}", result);
 }
 
 
