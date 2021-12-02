@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 fn main() {
     part1();
+    part2();
 }
 
 #[derive(Debug)]
@@ -37,7 +38,7 @@ impl FromStr for Command {
     }
 }
 
-struct Position {
+struct PositionPart1 {
     horizontal: i32,
     depth: i32,
 }
@@ -49,7 +50,7 @@ fn part1() {
         .map(|line| line.parse().unwrap())
         .collect();
 
-    let mut position = Position { horizontal: 0, depth: 0 };
+    let mut position = PositionPart1 { horizontal: 0, depth: 0 };
 
     for command in commands {
         match command {
@@ -60,6 +61,35 @@ fn part1() {
     }
 
     println!("Part 1: {}", position.horizontal * position.depth);
+}
+
+struct PositionPart2 {
+    horizontal: i32,
+    aim: i32,
+    depth: i32,
+}
+
+fn part2() {
+    let commands: Vec<Command> = raw_input()
+        .trim()
+        .lines()
+        .map(|line| line.parse().unwrap())
+        .collect();
+
+    let mut position = PositionPart2 { horizontal: 0, aim: 0, depth: 0 };
+
+    for command in commands {
+        match command {
+            Command::Forward(value) => {
+                position.horizontal += value as i32;
+                position.depth += position.aim * (value as i32);
+            },
+            Command::Up(value)      => position.aim -= value as i32,
+            Command::Down(value)    => position.aim += value as i32,
+        }
+    }
+
+    println!("Part 2: {}", position.horizontal * position.depth);
 }
 
 fn raw_input() -> &'static str
