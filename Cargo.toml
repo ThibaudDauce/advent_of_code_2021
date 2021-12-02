@@ -9,4 +9,8 @@ edition = "2021"
 name = "01"
 path = "src/01.rs"
 
+[[bin]]
+name = "02"
+path = "src/02.rs"
+
 [dependencies]
