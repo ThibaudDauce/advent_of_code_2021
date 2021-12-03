@@ -1,5 +1,6 @@
 fn main() {
     part1();
+    part2();
 }
 
 struct Result {
@@ -57,6 +58,105 @@ fn part1() {
     }
 
     println!("Part 1 {}", gamma_rate * epsilon_rate);
+}
+
+fn part2() {
+    let digits: Vec<Vec<char>> = raw_input()
+        .trim()
+        .lines()
+        .map(|line| line.trim().chars().collect::<Vec<char>>())
+        .collect();
+
+    let oxygen = compute_life_support_rating(&digits, LifeSupportRating::Oxygen);
+    let co2 = compute_life_support_rating(&digits, LifeSupportRating::Co2);
+
+    println!("Part 2 {}", oxygen * co2);
+}
+
+enum LifeSupportRating {
+    Oxygen,
+    Co2,
+}
+
+fn compute_life_support_rating(digits: &Vec<Vec<char>>, life_support_rating: LifeSupportRating) -> u32
+{
+    let mut index = 0;
+    let mut subdigits = digits.clone();
+    let mut binary_digits = loop {
+        let mut zeros = 0;
+        let mut ones = 0;
+
+        for digit in &subdigits {
+            match digit[index] {
+                '0' => zeros += 1,
+                '1' => ones += 1,
+                _ => panic!(),
+            }
+        }
+
+        let keep = match life_support_rating {
+            LifeSupportRating::Oxygen => {
+                if ones >= zeros {
+                    '1'
+                } else {
+                    '0'
+                }
+            },
+            LifeSupportRating::Co2 => {
+                if ones < zeros {
+                    '1'
+                } else {
+                    '0'
+                }
+            },
+        };
+
+        let mut new_subdigits = Vec::new();
+        for digit in &subdigits {
+            if digit[index] == keep {
+                new_subdigits.push(digit.clone());
+            }
+        }
+
+        subdigits = new_subdigits;
+        index += 1;
+
+        if subdigits.len() == 1 {
+            break subdigits.first().unwrap().clone();
+        }
+    };
+
+    binary_digits.reverse();
+
+    let two: u32 = 2;
+
+    let mut result = 0;
+    for (index, digit) in binary_digits.iter().enumerate() {
+        match digit {
+            '0' => {},
+            '1' => result += two.pow(index as u32),
+            _  => panic!(),
+        }
+    }
+
+    result
+}
+
+fn test_input() -> &'static str {
+    "
+    00100
+    11110
+    10110
+    10111
+    10101
+    01111
+    00111
+    11100
+    10000
+    11001
+    00010
+    01010
+    "
 }
 
 fn raw_input() -> &'static str { 
