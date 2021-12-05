@@ -1,9 +1,11 @@
 use std::collections::HashMap;
-use std::iter;
+use std::cmp::min;
+use std::cmp::max;
 
 fn main()
 {
     part1();
+    part2();
 }
 
 fn part1()
@@ -17,25 +19,25 @@ fn part1()
             let (destination_x, destination_y) = destination.trim().split_once(',').unwrap();
 
             (
-                (origin_x.parse::<u32>().unwrap(), origin_y.parse::<u32>().unwrap()),
-                (destination_x.parse::<u32>().unwrap(), destination_y.parse::<u32>().unwrap()),
+                (origin_x.parse::<i32>().unwrap(), origin_y.parse::<i32>().unwrap()),
+                (destination_x.parse::<i32>().unwrap(), destination_y.parse::<i32>().unwrap()),
             )
         });
 
-    let mut coordinates: HashMap<(u32, u32), u32> = HashMap::new();
+    let mut coordinates: HashMap<(i32, i32), i32> = HashMap::new();
 
     for ((origin_x, origin_y), (destination_x, destination_y)) in input {
         if origin_x != destination_x && origin_y != destination_y {
             continue;
         }
 
-        let range_x: Vec<u32> = if origin_x > destination_x {
+        let range_x: Vec<i32> = if origin_x > destination_x {
             (destination_x..origin_x + 1).rev().collect()
         } else {
             (origin_x..(destination_x + 1)).collect()
         };
 
-        let range_y: Vec<u32> = if origin_y > destination_y {
+        let range_y: Vec<i32> = if origin_y > destination_y {
             (destination_y..origin_y + 1).rev().collect()
         } else {
             (origin_y..(destination_y + 1)).collect()
@@ -54,6 +56,86 @@ fn part1()
 
     let sum = coordinates.values().filter(|number_of_lines| **number_of_lines > 1).count();
     println!("Part 1: {}", sum);
+}
+
+fn part2()
+{
+    let input = raw_input()
+        .trim()
+        .lines()
+        .map(|line| line.split_once(" -> ").unwrap())
+        .map(|(origin, destination)| {
+            let (origin_x, origin_y) = origin.trim().split_once(',').unwrap();
+            let (destination_x, destination_y) = destination.trim().split_once(',').unwrap();
+
+            (
+                (origin_x.parse::<i32>().unwrap(), origin_y.parse::<i32>().unwrap()),
+                (destination_x.parse::<i32>().unwrap(), destination_y.parse::<i32>().unwrap()),
+            )
+        });
+
+    let mut coordinates: HashMap<(i32, i32), i32> = HashMap::new();
+
+    for ((origin_x, origin_y), (destination_x, destination_y)) in input {
+        let mut range = Vec::new();
+
+        let increment_x = if origin_x > destination_x {
+            -1
+        } else if origin_x == destination_x {
+            0
+        } else {
+            1
+        };
+
+        let increment_y = if origin_y > destination_y {
+            -1
+        } else if origin_y == destination_y {
+            0
+        } else {
+            1
+        };
+
+        let mut x = origin_x;
+        let mut y = origin_y;
+
+        loop {
+            range.push((x, y));
+
+            if x == destination_x && y == destination_y {
+                break;
+            }
+
+            x += increment_x;
+            y += increment_y;
+        }
+
+        // println!("{},{} -> {},{}", origin_x, origin_y, destination_x, destination_y);
+
+        for (x, y) in range {
+            // println!("{},{}", x, y);
+            let entry = coordinates.entry((x, y)).or_insert(0);
+            *entry += 1;
+        }
+    }
+
+    let sum = coordinates.values().filter(|number_of_lines| **number_of_lines > 1).count();
+    println!("Part 2: {}", sum);
+}
+
+fn test_input() -> &'static str
+{
+    "
+    0,9 -> 5,9
+    8,0 -> 0,8
+    9,4 -> 3,4
+    2,2 -> 2,1
+    7,0 -> 7,4
+    6,4 -> 2,0
+    0,9 -> 2,9
+    3,4 -> 1,4
+    0,0 -> 8,8
+    5,5 -> 8,2
+    "
 }
 
 fn raw_input() -> &'static str
