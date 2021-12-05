@@ -3,22 +3,31 @@ fn main()
     part1();
 }
 
+struct Board {
+    success: bool,
+    digits: Vec<(u32, bool)>,
+}
+
 fn part1()
 {
     let (inputs, mut boards) = parse_input();
 
     for input in inputs {
         for board in &mut boards {
+            if board.success {
+                continue;
+            }
+
             for index in 0..25 {
-                if board[index].0 == input {
-                    board[index].1 = true;
+                if board.digits[index].0 == input {
+                    board.digits[index].1 = true;
 
                     let line = index / 5;
                     let column = index % 5;
 
                     let mut line_success = true;
                     for line_index in (line * 5)..((line + 1) * 5) {
-                        if ! board[line_index].1 {
+                        if ! board.digits[line_index].1 {
                             line_success = false;
                             break;
                         }
@@ -26,22 +35,23 @@ fn part1()
 
                     let mut column_success = true;
                     for column_index in (column..column + 4 * 5 + 1).step_by(5) {
-                        if ! board[column_index].1 {
+                        if ! board.digits[column_index].1 {
                             column_success = false;
                             break;
                         }
                     }
 
                     if line_success || column_success {
+                        board.success = true;
+
                         let mut sum = 0;
                         for other_index in 0..25 {
-                            if ! board[other_index].1 {
-                                sum += board[other_index].0;
+                            if ! board.digits[other_index].1 {
+                                sum += board.digits[other_index].0;
                             }
                         }
 
-                        println!("Part 1: {}", sum * input);
-                        return;
+                        println!("Success: {}", sum * input);
                     }
                 }
             }
@@ -54,7 +64,7 @@ fn part1()
     }
 }
 
-fn parse_input() -> (Vec<u32>, Vec<Vec<(u32, bool)>>)
+fn parse_input() -> (Vec<u32>, Vec<Board>)
 {
     let mut blocks = raw_input().trim().split("\n\n");
 
@@ -66,7 +76,7 @@ fn parse_input() -> (Vec<u32>, Vec<Vec<(u32, bool)>>)
         .collect();
 
 
-    let mut boards: Vec<Vec<(u32, bool)>> = Vec::new();
+    let mut boards: Vec<Board> = Vec::new();
 
     for block in blocks {
         let mut board: Vec<(u32, bool)> = Vec::with_capacity(25);
@@ -82,7 +92,7 @@ fn parse_input() -> (Vec<u32>, Vec<Vec<(u32, bool)>>)
             }
         }
 
-        boards.push(board);
+        boards.push(Board { success: false, digits: board });
     }
 
     (inputs, boards)
