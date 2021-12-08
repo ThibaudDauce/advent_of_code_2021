@@ -1,16 +1,29 @@
 fn main()
 {
     part1();
+    part2();
 }
 
 fn part1()
+{
+    let total = compute(80);
+    println!("Part 1: {}", total);
+}
+
+fn part2()
+{
+    let total = compute(256);
+    println!("Part 2: {}", total);
+}
+
+fn compute(days: u64) -> u64
 {
     let mut lanternfishes = [0; 9];
     for digit in raw_input().split(',').map(|digit| digit.parse::<usize>().unwrap()) {
         lanternfishes[digit] += 1;
     }
 
-    for _day in 0..80 {
+    for _day in 0..days {
         let mut new_lanternfishes = [0; 9];
         for (index, count) in lanternfishes.iter().enumerate() {
             if index == 0 {
@@ -24,8 +37,7 @@ fn part1()
         lanternfishes = new_lanternfishes;
     }
 
-    let total: u32 = lanternfishes.iter().sum();
-    println!("Part 1: {}", total);
+    lanternfishes.iter().sum()
 }
 
 fn test_input() -> &'static str
