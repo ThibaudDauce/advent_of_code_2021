@@ -1,6 +1,10 @@
+use std::collections::HashSet;
+use std::collections::HashMap;
+
 fn main()
 {
     part1();
+    part2();
 }
 
 fn part1()
@@ -11,9 +15,235 @@ fn part1()
 
     println!("Part 1: {}", result);
 }
+#[derive(Debug)]
+enum Wire {
+    Known(char),
+    Unknown(HashSet<char>),
+}
+#[derive(Debug)]
+enum Word {
+    Known(HashSet<char>, u32),
+    Unknown(HashSet<char>, HashSet<u32>),
+}
+#[derive(Debug)]
+struct Line {
+    words: Vec<Word>,
+    wires: HashMap<char, Wire>,
+}
+
+impl Line {
+    fn from_string(line: &str) -> Self {
+        let (words_a, words_b) = line.trim().split_once(" | ").unwrap();
+
+        let digits = digits();
+
+        let mut words: Vec<Word> = Vec::new();
+        for word_as_string in words_a.split(' ') {
+            let chars: HashSet<char> = word_as_string.chars().collect();
+            let length = chars.len();
+
+            let found_digits: HashSet<u32> = digits.iter().filter(|(_, other_chars)| other_chars.len() == length).map(|(digit, _)| *digit).collect();
+
+            let word = if found_digits.len() == 1 {
+                Word::Known(chars, *found_digits.iter().next().unwrap())
+            } else {
+                Word::Unknown(chars, found_digits)
+            };
+
+            words.push(word);
+        }
+        for word_as_string in words_b.split(' ') {
+            let chars: HashSet<char> = word_as_string.chars().collect();
+            let length = chars.len();
+
+            let found_digits: HashSet<u32> = digits.iter().filter(|(_, other_chars)| other_chars.len() == length).map(|(digit, _)| *digit).collect();
+
+            let word = if found_digits.len() == 1 {
+                Word::Known(chars, *found_digits.iter().next().unwrap())
+            } else {
+                Word::Unknown(chars, found_digits)
+            };
+
+            words.push(word);
+        }
+
+        let mut wires = HashMap::new();
+        let all = HashSet::from(all_chars());
+        for char in all_chars() {
+            wires.insert(char, Wire::Unknown(all.clone()));
+        }
+
+        Line {
+            words, wires
+        }
+    }
+}
+
+fn digits() -> HashMap<u32, HashSet<char>>
+{
+    let mut digits: HashMap<u32, HashSet<char>> = HashMap::new();
+    digits.insert(0, HashSet::from(['a', 'b', 'c', 'e', 'f', 'g']));
+    digits.insert(1, HashSet::from(['c', 'f']));
+    digits.insert(2, HashSet::from(['a', 'c', 'd', 'e', 'g']));
+    digits.insert(3, HashSet::from(['a', 'c', 'd', 'f', 'g']));
+    digits.insert(4, HashSet::from(['b', 'c', 'd', 'f']));
+    digits.insert(5, HashSet::from(['a', 'b', 'd', 'f', 'g']));
+    digits.insert(6, HashSet::from(['a', 'b', 'd', 'e', 'f', 'g']));
+    digits.insert(7, HashSet::from(['a', 'c', 'f']));
+    digits.insert(8, HashSet::from(['a', 'b', 'c', 'd', 'e', 'f', 'g']));
+    digits.insert(9, HashSet::from(['a', 'b', 'c', 'd', 'f', 'g']));
+
+    digits
+}
+
+fn part2()
+{
+    let mut lines: Vec<Line> = raw_input().trim().lines().map(|line| Line::from_string(line)).collect();
+
+    let all_digits = digits();
+
+    let mut sum = 0;
+    for line in &mut lines {
+        let result = loop {
+            // println!("Loop");
+            for word in &line.words {
+                match word {
+                    Word::Known(chars, digit) => {
+                        // chars = ab
+                        // digit = 1
+
+                        // vrai chars de 1: c f
+                        let real_chars = &all_digits[digit];
+
+                        for char in all_chars() {
+                            if real_chars.contains(&char) {
+                                if let Wire::Unknown(chars_possible) = &line.wires[&char] {
+                                    let new_chars: HashSet<char> = chars.intersection(chars_possible).copied().collect();
+
+                                    let wire = if new_chars.len() == 1 {
+                                        Wire::Known(*new_chars.iter().next().unwrap())
+                                    } else {
+                                        Wire::Unknown(new_chars)
+                                    };
+
+                                    line.wires.insert(char, wire);
+                                }
+                            } else if let Wire::Unknown(chars_possible) = &line.wires[&char] {
+                                let new_chars: HashSet<char> = chars_possible.difference(chars).copied().collect();
+
+                                let wire = if new_chars.len() == 1 {
+                                    Wire::Known(*new_chars.iter().next().unwrap())
+                                } else {
+                                    Wire::Unknown(new_chars)
+                                };
+
+                                line.wires.insert(char, wire);
+                            }
+                        }
+                    },
+
+                    Word::Unknown(chars, digits) => {
+                        // digits: 2, 3, 5
+
+                        let missing_chars: HashSet<char> = HashSet::from(all_chars()).difference(chars).copied().collect();
+                        // missing_chars  g, e
+
+                        // Pour 2, 3, 5 on sait  que les segments manquants sont b, c, e, f
+                        let mut missing_segments: HashSet<char> = HashSet::new();
+                        for digit in digits {
+                            for char in HashSet::from(all_chars()).difference(&all_digits[digit]) {
+                                missing_segments.insert(*char);
+                            }
+                        }
+
+                        for char in HashSet::from(all_chars()).difference(&missing_segments).copied().collect::<HashSet<char>>() {
+                            if let Wire::Unknown(chars_possible) = &line.wires[&char] {
+                                let new_chars: HashSet<char> = chars_possible.difference(&missing_chars).copied().collect();
+
+                                let wire = if new_chars.len() == 1 {
+                                    Wire::Known(*new_chars.iter().next().unwrap())
+                                } else {
+                                    Wire::Unknown(new_chars)
+                                };
+
+                                line.wires.insert(char, wire);
+                            }
+                        }
+                    },
+                }
+            }
+
+            let known_chars: HashMap<char, char> = line.wires.iter().filter_map(|(from_char, wire)| {
+                match wire {
+                    Wire::Unknown(_) => None,
+                    Wire::Known(to_char) => Some((*from_char, *to_char)),
+                }
+            }).collect();
+
+            // println!("known_chars.len() {}", known_chars.len());
+
+            if known_chars.len() == all_chars().len() {
+                let wrong_to_real_chars: HashMap<char, char> = known_chars.iter().map(|(real, wrong)| (*wrong, *real)).collect();
+
+
+                let code_words = line.words.iter().rev().take(4);
+
+                let digits = digits();
+                let mut result = 0;
+                for (index, code_word) in code_words.enumerate() {
+                    let chars = match code_word {
+                        Word::Known(chars, _) => chars,
+                        Word::Unknown(chars, _) => chars,
+                    };
+
+                    // dbg!(chars);
+
+                    let real_chars: HashSet<char> = chars.iter().map(|char| wrong_to_real_chars.get(char).unwrap()).copied().collect();
+
+                    let digit = digits.iter().find(|(_, chars)| *chars == &real_chars).unwrap().0;
+
+                    result += digit * 10_u32.pow(index as u32);
+                }
+
+                break result;
+            }
+
+            for known_char in known_chars.values() {
+                for char in all_chars() {
+                    if let Wire::Unknown(chars_possible) = &line.wires[&char] {
+                        if chars_possible.contains(known_char) {
+                            let mut new_chars = chars_possible.clone();
+                            new_chars.remove(known_char);
+        
+                            let wire = if new_chars.len() == 1 {
+                                Wire::Known(*new_chars.iter().next().unwrap())
+                            } else {
+                                Wire::Unknown(new_chars.clone())
+                            };
+        
+                            line.wires.insert(char, wire);
+                        }
+                    }
+                }
+            }
+
+            // dbg!(&line);
+        };
+
+        sum += result;
+    }
+
+    println!("Part 2: {}", sum);
+}
+
+fn all_chars() -> [char; 7]
+{
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+}
 
 fn test_input() -> &'static str
 {
+    // acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf
     "
     be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
     edbfga begcd cbg gc gcadebf fbgde acbgfd abcde gfcbed gfec | fcgedb cgb dgebacf gc
