@@ -1,6 +1,7 @@
 fn main()
 {
     part1();
+    part2();
 }
 
 fn part1()
@@ -23,6 +24,35 @@ fn part1()
     }
 
     println!("Part 1: {}", fuel);
+}
+
+fn part2()
+{
+    let mut digits: Vec<i32> = raw_input().split(',').map(|digit| digit.parse().unwrap()).collect();
+    digits.sort_unstable();
+
+    // let mean = (digits.iter().sum::<i32>() as f32 / digits.len() as f32).round() as i32;
+
+    let mut min_fuel = i32::MAX;
+
+    for horizontal in *digits.iter().min().unwrap()..*digits.iter().max().unwrap() {
+        let mut fuel = 0;
+        for digit in &digits {
+            let distance = (digit - horizontal).abs();
+            fuel += (distance * (distance + 1)) / 2;
+        }
+
+        if fuel < min_fuel {
+            min_fuel = fuel;
+        }
+    }
+
+    println!("Part 2: {}", min_fuel);
+}
+
+fn test_input() -> &'static str
+{
+    "16,1,2,0,4,2,7,1,2,14"
 }
 
 fn raw_input() -> &'static str
