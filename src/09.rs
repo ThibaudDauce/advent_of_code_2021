@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 fn main()
 {
@@ -20,7 +21,10 @@ fn part1()
         })
         .collect();
 
-    let mut sum = 0;
+    let mut part1 = 0;
+
+    let mut already_visited: HashSet<(i32, i32)> = HashSet::new();
+    let mut basins = Vec::new();
 
     'map_loop: for ((x, y), digit) in &map {
         for (inc_x, inc_y) in [(-1, 0), (1, 0), (0, 1), (0, -1)] {
@@ -30,10 +34,44 @@ fn part1()
             }
         }
 
-        sum += digit + 1;
+        part1 += digit + 1;
+
+        if ! already_visited.contains(&(*x, *y)) {
+            let result = compute_basin(&map, *x, *y, already_visited);
+            already_visited = result.0;
+            basins.push(result.1);
+        }
     }
 
-    println!("Part 1: {}", sum);
+    basins.sort_unstable();
+    let mut largest_basins = basins.iter().rev().take(3);
+
+    let part2 = largest_basins.next().unwrap() * largest_basins.next().unwrap() * largest_basins.next().unwrap();
+
+    println!("Part 1: {}", part1);
+    println!("Part 2: {}", part2);
+}
+
+fn compute_basin(map: &HashMap<(i32, i32), u32>, x: i32, y: i32, mut already_visited: HashSet<(i32, i32)>) -> (HashSet<(i32, i32)>, u32)
+{
+    if already_visited.contains(&(x, y)) {
+        return (already_visited, 0);
+    }
+
+    println!("Testing {} {} {}", x, y, map.get(&(x, y)).unwrap());
+    let mut size = 1;
+    already_visited.insert((x, y));
+
+    for (inc_x, inc_y) in [(-1, 0), (1, 0), (0, 1), (0, -1)] {
+        let near_digit = map.get(&(x + inc_x, y + inc_y)).unwrap_or(&9);
+        if *near_digit != 9 {
+            let result = compute_basin(map, x + inc_x, y + inc_y, already_visited);
+            already_visited = result.0;
+            size += result.1;
+        }
+    }
+
+    (already_visited, size)
 }
 
 fn test_input() -> &'static str
