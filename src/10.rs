@@ -7,6 +7,8 @@ fn part1()
 {
     let lines = raw_input().trim().lines().map(|line| line.trim().chars());
 
+
+    let mut scores: Vec<u64> = Vec::new();
     let mut sum = 0;
     'loop_lines: for line in lines {
         let mut chunks = Vec::new();
@@ -48,9 +50,35 @@ fn part1()
                 _ => panic!(),
             };
         }
+
+        if !chunks.is_empty() {
+            let mut score = 0;
+            for char in chunks.iter().rev() {
+                match char {
+                    '[' => {
+                        score = score * 5 + 2;
+                    },
+                    '(' => {
+                        score = score * 5 + 1;
+                    }, 
+                    '{' => {
+                        score = score * 5 + 3;
+                    },
+                    '<' => {
+                        score = score * 5 + 4;
+                    },
+                    _ => panic!(),
+                };
+            }
+
+            scores.push(score);
+        }
     }
 
+    scores.sort_unstable();
+
     println!("Part 1: {}", sum);
+    println!("Part 2: {}", scores[scores.len() / 2]);
 }
 
 fn test_input() -> &'static str
