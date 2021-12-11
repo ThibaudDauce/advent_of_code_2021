@@ -22,8 +22,11 @@ fn part1()
         .collect();
 
     let mut sum = 0;
-    for i in 0..100 {
-        println!("Step {}", i);
+    let mut i = 0;
+    loop {
+        i += 1;
+
+        // println!("Step {}", i);
         for (_, energy) in map.iter_mut() {
             *energy += 1;
         }
@@ -64,13 +67,17 @@ fn part1()
             *energy = 0;
         }
 
-        println!("Step {}: {} flashes", i, flashes.len());
         sum += flashes.len();
-        // print_map(&map);
-    }
 
-    
-    println!("Part 1: {}", sum);
+        if i == 100 {
+            println!("Part 1: {}", sum);
+        }
+
+        if flashes.len() == map.len() {
+            println!("Part 2: {}", i);
+            break;
+        }
+    }
 }
 
 fn print_map(map: &HashMap<(i32, i32), u32>)
