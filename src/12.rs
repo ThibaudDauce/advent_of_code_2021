@@ -3,16 +3,14 @@ use std::collections::HashSet;
 
 fn main()
 {
-    part1();
-}
-
-fn part1()
-{
-    let result = number_of_paths(raw_input());
+    let result = part1(raw_input());
     println!("Part 1: {}", result);
+
+    let result = part2(raw_input());
+    println!("Part 2: {}", result);
 }
 
-fn number_of_paths(input: &'static str) -> usize
+fn part1(input: &'static str) -> usize
 {
     let mut map: HashMap<&'static str, HashSet<&'static str>> = HashMap::new();
 
@@ -25,13 +23,12 @@ fn number_of_paths(input: &'static str) -> usize
         entry.insert(x);
     }
 
-    let paths = compute_paths(&map, vec!["start"]);
+    let paths = compute_paths_part1(&map, vec!["start"]);
 
-    dbg!(&paths);
     paths.len()
 }
 
-fn compute_paths(map: &HashMap<&'static str, HashSet<&'static str>>, path: Vec<&'static str>) -> Vec<Vec<&'static str>>
+fn compute_paths_part1(map: &HashMap<&'static str, HashSet<&'static str>>, path: Vec<&'static str>) -> Vec<Vec<&'static str>>
 {
     let current_position = path.last().unwrap();
 
@@ -48,7 +45,67 @@ fn compute_paths(map: &HashMap<&'static str, HashSet<&'static str>>, path: Vec<&
         if position == &"end" {
             paths.push(new_path);
         } else {
-            let mut new_paths = compute_paths(map, new_path);
+            let mut new_paths = compute_paths_part1(map, new_path);
+            paths.append(&mut new_paths);
+        }
+    }
+
+    paths
+}
+
+#[derive(Debug, Clone)]
+struct Path {
+    positions: Vec<&'static str>,
+    double_visit: bool,
+}
+
+fn part2(input: &'static str) -> usize
+{
+    let mut map: HashMap<&'static str, HashSet<&'static str>> = HashMap::new();
+
+    for line in input.trim().lines() {
+        let (x, y) = line.trim().split_once('-').unwrap();
+
+        let entry = map.entry(x).or_insert_with(HashSet::new);
+        entry.insert(y);
+        let entry = map.entry(y).or_insert_with(HashSet::new);
+        entry.insert(x);
+    }
+
+    let path = Path { positions: vec!["start"], double_visit: false };
+
+    let paths = compute_paths_part2(&map, path);
+
+    paths.len()
+}
+
+fn compute_paths_part2(map: &HashMap<&'static str, HashSet<&'static str>>, path: Path) -> Vec<Path>
+{
+    let current_position = path.positions.last().unwrap();
+
+    let mut paths = vec![];
+
+    for position in map.get(current_position).unwrap() {
+        if position == &"start" {
+            continue;
+        }
+
+        let mut new_path = path.clone();
+
+        if is_lower_case(position) && path.positions.contains(position) {
+            if path.double_visit {
+                continue;
+            }
+
+            new_path.double_visit = true;
+        }
+
+        new_path.positions.push(position);
+
+        if position == &"end" {
+            paths.push(new_path);
+        } else {
+            let mut new_paths = compute_paths_part2(map, new_path);
             paths.append(&mut new_paths);
         }
     }
@@ -57,8 +114,8 @@ fn compute_paths(map: &HashMap<&'static str, HashSet<&'static str>>, path: Vec<&
 }
 
 #[test]
-fn test_all() {
-    let result = number_of_paths("
+fn test_part1() {
+    let result = part1("
         start-A
         start-b
         A-c
@@ -70,7 +127,7 @@ fn test_all() {
 
     assert_eq!(10, result);
 
-    let result = number_of_paths("
+    let result = part1("
         dc-end
         HN-start
         start-kj
@@ -85,7 +142,7 @@ fn test_all() {
 
     assert_eq!(19, result);
 
-    let result = number_of_paths("
+    let result = part1("
         fs-end
         he-DX
         fs-he
@@ -107,6 +164,59 @@ fn test_all() {
     ");
 
     assert_eq!(226, result);
+}
+
+#[test]
+fn test_part2() {
+    let result = part2("
+        start-A
+        start-b
+        A-c
+        A-b
+        b-d
+        A-end
+        b-end
+    ");
+
+    assert_eq!(36, result);
+
+    let result = part2("
+        dc-end
+        HN-start
+        start-kj
+        dc-start
+        dc-HN
+        LN-dc
+        HN-end
+        kj-sa
+        kj-HN
+        kj-dc
+    ");
+
+    assert_eq!(103, result);
+
+    let result = part2("
+        fs-end
+        he-DX
+        fs-he
+        start-DX
+        pj-DX
+        end-zg
+        zg-sl
+        zg-pj
+        pj-he
+        RW-he
+        fs-DX
+        pj-RW
+        zg-RW
+        start-pj
+        he-WI
+        zg-he
+        pj-fs
+        start-RW
+    ");
+
+    assert_eq!(3509, result);
 }
 
 fn is_lower_case(position: &'static str) -> bool
