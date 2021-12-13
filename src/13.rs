@@ -11,35 +11,56 @@ fn main()
         coordinates.insert((x.parse().unwrap(), y.parse().unwrap()));
     }
 
-    let instruction = instructions_input.lines().next().unwrap();
+    let mut part1 = false;
 
-    let instruction_coordinates = &instruction.trim()["fold along ".len()..];
-
-    let (axe, axe_value) = instruction_coordinates.split_once('=').unwrap();
-    let axe_value: u32 = axe_value.parse().unwrap();
-
-    let mut new_coordinates = HashSet::new();
-    for position in coordinates {
-        let value = match axe {
-            "x" => position.0,
-            "y" => position.1,
-            _ => panic!(),
-        };
-
-        if value < axe_value {
-            new_coordinates.insert(position);
-        } else if value > axe_value {
-            let new_value = axe_value - (value - axe_value);
-            let new_position = match axe {
-                "x" => (new_value, position.1),
-                "y" => (position.0, new_value),
+    for instruction in instructions_input.lines() {
+        let instruction_coordinates = &instruction.trim()["fold along ".len()..];
+    
+        let (axe, axe_value) = instruction_coordinates.split_once('=').unwrap();
+        let axe_value: u32 = axe_value.parse().unwrap();
+    
+        let mut new_coordinates: HashSet<(u32, u32)> = HashSet::new();
+        for position in &coordinates {
+            let value = match axe {
+                "x" => position.0,
+                "y" => position.1,
                 _ => panic!(),
             };
-            new_coordinates.insert(new_position);
+    
+            if value < axe_value {
+                new_coordinates.insert(*position);
+            } else if value > axe_value {
+                let new_value = axe_value - (value - axe_value);
+                let new_position = match axe {
+                    "x" => (new_value, position.1),
+                    "y" => (position.0, new_value),
+                    _ => panic!(),
+                };
+                new_coordinates.insert(new_position);
+            }
         }
-    }    
 
-    println!("Part 1: {}", new_coordinates.len());
+        if !part1 {
+            println!("Part 1: {}", new_coordinates.len());
+            part1 = true;
+        }
+
+        coordinates = new_coordinates;
+    }
+
+    let max_x = *coordinates.iter().map(|(x, _)| x).max().unwrap();
+    let max_y = *coordinates.iter().map(|(_, y)| y).max().unwrap();
+
+    for y in 0..=max_y {
+        for x in 0..=max_x {
+            if coordinates.contains(&(x, y)) {
+                print!("#");
+            } else {
+                print!(" ");
+            }
+        }
+        println!();
+    }
 }
 
 fn test_input() -> &'static str
