@@ -1,11 +1,35 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
+use colored::*;
 
 fn main()
 {
     part1();
+    part2();
 }
 
 fn part1()
+{
+    let mut map: HashMap<(i32, i32), u32> = test_input()
+        .trim()
+        .lines()
+        .enumerate()
+        .flat_map(|(y, line)| {
+            line.trim()
+                .chars()
+                .map(|char| char.to_digit(10).unwrap())
+                .enumerate()
+                .map(move |(x, digit)| ((x as i32, y as i32), digit))
+        })
+        .collect();
+
+    map.insert((0, 0), 0);
+    
+    let result = compute_cost(&map);
+    println!("Part 1: {}", result);
+}
+
+fn part2()
 {
     let mut map: HashMap<(i32, i32), u32> = raw_input()
         .trim()
@@ -20,41 +44,156 @@ fn part1()
         })
         .collect();
 
+    let initial_map = map.clone();
+
+    let max_x = *map.keys().map(|(x, _)| x).max().unwrap() + 1;
+    let max_y = *map.keys().map(|(_, y)| y).max().unwrap() + 1;
+
+    for inc_x in 0..5 {
+        for inc_y in 0..5 {
+            if inc_x == 0 && inc_y == 0 {
+                continue;
+            }
+
+            let inc = inc_x + inc_y;
+
+            for ((x, y), cost) in &initial_map {
+                let mut new_cost = cost + inc;
+                if new_cost > 9 {
+                    new_cost -= 9;
+                }
+
+                map.insert((*x + inc_x as i32 * max_x, *y + inc_y as i32 * max_y), new_cost);
+            }
+        }
+    }
 
     map.insert((0, 0), 0);
+    let result = compute_cost(&map);
+
+    println!("Part 2: {}", result);
+}
+
+fn compute_cost(map: &HashMap<(i32, i32), u32>) -> u32
+{
     let mut costs = HashMap::new();
     costs.insert((0, 0), 0);
-    let costs = compute_cost((0, 0), costs, &map);
+    let mut to_visit = HashMap::new();
+    to_visit.insert((0, 0), 0);
+
+    let mut previous = HashMap::new();
+
+    loop {
+        if to_visit.is_empty() {
+            break;
+        }
+
+        let ((x, y), cost) = to_visit.iter().min_by(|(_, cost_a), (_, cost_b)| cost_a.cmp(cost_b)).unwrap();
+        let initial_cost = *cost;
+        let x = *x;
+        let y = *y;
+
+        to_visit.remove(&(x, y));
+
+        for (inc_x, inc_y) in [(-1, 0), (1, 0), (0, 1), (0, -1)] {
+            let next_x = x + inc_x;
+            let next_y = y + inc_y;
+    
+            if let Some(entering_cost) = map.get(&(next_x, next_y)) {
+                let new_full_cost = initial_cost + entering_cost;
+
+                if let Some(full_cost) = costs.get(&(next_x, next_y)) {
+                    if *full_cost <= new_full_cost {
+                        continue;
+                    }
+                }
+    
+                previous.insert((next_x, next_y), (x, y));
+                costs.insert((next_x, next_y), new_full_cost);
+                to_visit.insert((next_x, next_y), new_full_cost);
+            }
+        }
+    }
 
     let max_x = *map.keys().map(|(x, _)| x).max().unwrap();
     let max_y = *map.keys().map(|(_, y)| y).max().unwrap();
 
-    println!("Part 1: {}", costs.get(&(max_x, max_y)).unwrap());
+    let mut path = HashSet::new();
+    let mut position = (max_x, max_y);
+    let mut sum = 0;
+    loop {
+        if position == (0, 0) {
+            break;
+        }
+
+        sum += map.get(&position).unwrap();
+
+        path.insert(position);
+        position = *previous.get(&position).unwrap();
+
+    }
+
+    for y in 0..=max_y {
+        for x in 0..=max_x {
+            let cost = map.get(&(x, y)).unwrap();
+            if path.contains(&(x, y)) {
+                print!("{}", format!("{}", cost).red());
+            } else {
+                print!("{}", cost);
+            }
+        }
+        println!();
+    }
+
+    println!("{}", sum);
+
+    *costs.get(&(max_x, max_y)).unwrap()
 }
 
-fn compute_cost(position: (i32, i32), mut costs: HashMap<(i32, i32), u32>, map: &HashMap<(i32, i32), u32>) -> HashMap<(i32, i32), u32>
+fn compute_cost_wikipedia(map: &HashMap<(i32, i32), u32>) -> u32
 {
-    let initial_cost = *costs.get(&position).unwrap();
-    for (inc_x, inc_y) in [(-1, 0), (1, 0), (0, 1), (0, -1)] {
-        let x = position.0 + inc_x;
-        let y = position.1 + inc_y;
+    let number_of_positions = map.len();
+    let mut P: HashSet<(i32, i32)> = HashSet::new();
+    let mut d: HashMap<(i32, i32), u32> = HashMap::new();
+    for position in map.keys() {
+        d.insert(*position, u32::MAX);
+    }
+    d.insert((0, 0), 0);
 
-        if let Some(entering_cost) = map.get(&(x, y)) {
-            let new_full_cost = initial_cost + entering_cost;
+    while P.len() < number_of_positions {
+        let ((x, y), cost) = d.iter().filter(|(position, _)| ! P.contains(position)).min_by(|(_, cost_a), (_, cost_b)| cost_a.cmp(cost_b)).unwrap();
 
-            if let Some(full_cost) = costs.get(&(x, y)) {
-                if *full_cost <= new_full_cost {
+        let initial_cost = *cost;
+        let x = *x;
+        let y = *y;
+
+        P.insert((x, y));
+
+        for (inc_x, inc_y) in [(-1, 0), (1, 0), (0, 1), (0, -1)] {
+            let next_x = x + inc_x;
+            let next_y = y + inc_y;
+
+            if let Some(entering_cost) = map.get(&(next_x, next_y)) {
+                if P.contains(&(next_x, next_y)) {
                     continue;
                 }
-            }
 
-            costs.insert((x, y), new_full_cost);
-            costs = compute_cost((x, y), costs, map);
+                let new_full_cost = initial_cost + entering_cost;
+
+
+                if d.get(&(next_x, next_y)).unwrap() > &new_full_cost {
+                    d.insert((next_x, next_y), new_full_cost);
+                }
+            }
         }
     }
 
-    costs
+    let max_x = *map.keys().map(|(x, _)| x).max().unwrap();
+    let max_y = *map.keys().map(|(_, y)| y).max().unwrap();
+
+    *d.get(&(max_x, max_y)).unwrap()
 }
+
 
 fn test_input() -> &'static str
 {

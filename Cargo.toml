@@ -66,3 +66,4 @@ name = "15"
 path = "src/15.rs"
 
 [dependencies]
+colored = "2.0.0"
