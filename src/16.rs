@@ -1,6 +1,7 @@
 fn main()
 {
     println!("Part 1: {}", part1(raw_input()));
+    println!("Part 2: {}", part2(raw_input()));
 }
 
 #[derive(Debug, PartialEq)]
@@ -46,6 +47,70 @@ fn compute_sum(packet: Packet) -> u64
     }
 
     sum
+}
+
+fn part2(hexa: &'static str) -> u64
+{
+    let binary: Vec<bool> = hexa.chars().flat_map(hexa_to_binary).collect();
+
+    let packet = parse_packet(&binary).0;
+
+    compute_value(&packet)
+}
+
+
+fn compute_value(packet: &Packet) -> u64
+{
+    match &packet.data {
+        Data::Literal(literal) => literal.value,
+        Data::Operator(operator) => {
+            let operator_value = binary_to_decimal(&operator.operator);
+
+            match operator_value {
+                0 => operator.packets.iter().map(|packet| compute_value(packet)).sum(),
+                1 => operator.packets.iter().map(|packet| compute_value(packet)).product(),
+                2 => operator.packets.iter().map(|packet| compute_value(packet)).min().unwrap(),
+                3 => operator.packets.iter().map(|packet| compute_value(packet)).max().unwrap(),
+                5 => {
+                    assert_eq!(2, operator.packets.len());
+
+                    let first = compute_value(&operator.packets[0]);
+                    let second = compute_value(&operator.packets[1]);
+
+                    if first > second {
+                        1
+                    } else {
+                        0
+                    }
+                },
+                6 => {
+                    assert_eq!(2, operator.packets.len());
+
+                    let first = compute_value(&operator.packets[0]);
+                    let second = compute_value(&operator.packets[1]);
+
+                    if first < second {
+                        1
+                    } else {
+                        0
+                    }
+                },
+                7 => {
+                    assert_eq!(2, operator.packets.len());
+
+                    let first = compute_value(&operator.packets[0]);
+                    let second = compute_value(&operator.packets[1]);
+
+                    if first == second {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                _ => panic!(),
+            }
+        },
+    }
 }
 
 fn parse_packet(bits: &[bool]) -> (Packet, &[bool])
@@ -189,6 +254,15 @@ fn it_works()
     assert_eq!(12, part1("620080001611562C8802118E34"));
     assert_eq!(23, part1("C0015000016115A2E0802F182340"));
     assert_eq!(31, part1("A0016C880162017C3686B18A3D4780"));
+
+    assert_eq!(3, part2("C200B40A82"));
+    assert_eq!(54, part2("04005AC33890"));
+    assert_eq!(7, part2("880086C3E88112"));
+    assert_eq!(9, part2("CE00C43D881120"));
+    assert_eq!(1, part2("D8005AC2A8F0"));
+    assert_eq!(0, part2("F600BC2D8F"));
+    assert_eq!(0, part2("9C005AC2F8F0"));
+    assert_eq!(1, part2("9C0141080250320F1802104A08"));
 }
 
 fn raw_input() -> &'static str
