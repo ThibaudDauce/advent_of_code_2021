@@ -3,6 +3,7 @@ use std::collections::HashSet;
 fn main()
 {
     println!("Part 1: {}", number_of_lit_pixels(raw_input(), 2));
+    println!("Part 2: {}", number_of_lit_pixels(raw_input(), 50));
 }
 
 fn number_of_lit_pixels(input: &'static str, steps: u32) -> usize
@@ -142,6 +143,7 @@ fn print_map(map: &HashSet<(i32, i32)>, outside_lit: bool)
 fn it_works()
 {
     assert_eq!(35, number_of_lit_pixels(test_input(), 2));
+    assert_eq!(3351, number_of_lit_pixels(test_input(), 50));
 }
 
 fn test_input() -> &'static str
