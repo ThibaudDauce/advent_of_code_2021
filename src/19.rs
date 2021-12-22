@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 fn main()
 {
-    println!("Part 1: {}", number_of_beacons(raw_input(), 12));
+    let (number_of_beacons, maximum_distance) = number_of_beacons(raw_input(), 12);
+
+    println!("Part 1: {}", number_of_beacons);
+    println!("Part 2: {}", maximum_distance);
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -46,7 +49,7 @@ struct VectorsByOrientation {
 }
 
 
-fn number_of_beacons(input: &'static str, number_of_match: usize) -> u32
+fn number_of_beacons(input: &'static str, number_of_match: usize) -> (u32, u32)
 {
     let mut scanners = vec![];
 
@@ -152,11 +155,13 @@ fn number_of_beacons(input: &'static str, number_of_match: usize) -> u32
     }
 
     let mut points = HashSet::new();
+    let mut scanner_positions = vec![];
     for scanner in &scanners {
         match &scanner.state {
             ScannerState::Unknown(_) => panic!(),
             ScannerState::Known(scanner_state) => {
                 println!("Scanner {} position {},{},{}", scanner.id, scanner_state.position.x, scanner_state.position.y, scanner_state.position.z);
+                scanner_positions.push(scanner_state.position);
                 for point_with_vectors in &scanner_state.vectors_by_points {
                     points.insert(point_with_vectors.point);
                 }
@@ -164,7 +169,22 @@ fn number_of_beacons(input: &'static str, number_of_match: usize) -> u32
         }
     }
 
-    points.len() as u32
+    let mut maximum_distance = 0;
+    for a in &scanner_positions {
+        for b in &scanner_positions {
+            let distance = manhattan_distance(a, b);
+            if distance > maximum_distance {
+                maximum_distance = distance;
+            }
+        }
+    }
+
+    (points.len() as u32, maximum_distance)
+}
+
+fn manhattan_distance(a: &Vector, b: &Vector) -> u32
+{
+    ((a.x - b.x).abs() + (a.y - b.y).abs() + (a.z - b.z).abs()) as u32
 }
 
 fn simplify_scanner(scanner: &Scanner, orientation: &Orientation, position: Vector) -> Scanner
@@ -472,8 +492,12 @@ fn it_works()
         panic!();
     }
 
-    assert_eq!(3, number_of_beacons(small_test_input(), 3));
-    assert_eq!(79, number_of_beacons(test_input(), 12));
+    assert_eq!(3, number_of_beacons(small_test_input(), 3).0);
+
+    let (number_of_beacons, maximum_distance) = number_of_beacons(test_input(), 12);
+
+    assert_eq!(79, number_of_beacons);
+    assert_eq!(3621, maximum_distance);
 }
 
 fn all_orientations() -> [Orientation; 24]
