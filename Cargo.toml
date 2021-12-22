@@ -77,5 +77,9 @@ path = "src/17.rs"
 name = "18"
 path = "src/18.rs"
 
+[[bin]]
+name = "19"
+path = "src/19.rs"
+
 [dependencies]
 colored = "2.0.0"
