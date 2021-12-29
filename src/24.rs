@@ -164,62 +164,97 @@ impl Alu {
                         left
                     },
 
-                    // Simplifications de deux additions à la suite (x+2)+3 = x+5
+                    // Simplification d'un mod sur une addition ((x*26)+56+y)%26 = (0+56%26+y%26)%26
+                    (
+                        VarContent { source: Source::Maths(MathsKind::Add, additions ), .. },
+                        VarContent { content : Content::Value(mod_value), .. },
+                    ) if kind == MathsKind::Mod => {
+                        let mut new_additions = Vec::with_capacity(additions.len());
+                        'main_loop: for addition in additions {
+                            if let VarContent { content: Content::Value(value), .. } = addition {
+                                if value % mod_value != 0 {
+                                    new_additions.push(get_var_content_from_value(value % mod_value));
+                                }
+                            } else if let VarContent { source: Source::Maths(MathsKind::Mul, multiplications ), .. } = addition {
+                                for multiplication in multiplications {
+                                    if let Content::Value(multiplier) = multiplication.content {
+                                        if multiplier % mod_value == 0 {
+                                            continue 'main_loop;
+                                        }
+                                    }
+                                }
+                            } else {
+                                new_additions.push(merge_var_contents(kind, addition.clone(), get_var_content_from_value(*mod_value)));
+                            }
+                        }
+
+                        let mut new_content = None;
+                        for addition in &new_additions {
+                            if let Some(content) = new_content {
+                                new_content = Some(merge_content(kind, &content, &addition.content));
+                            } else {
+                                new_content = Some(addition.content.clone());
+                            }
+                        }
+
+                        let new_content = new_content.unwrap();
+                        let additions_var_content = VarContent { source: Source::Maths(MathsKind::Add, new_additions ), content: new_content.clone() };
+
+                        if new_content.max() <= *mod_value {
+                            additions_var_content
+                        } else {
+                            // On est obligé de refaire un mod derrière parce que c'est pas sûr que l'on ne soit pas au dessus de mod_value à la fin de 
+                            // l'addition
+                            merge_var_contents(MathsKind::Mod, additions_var_content, get_var_content_from_value(*mod_value))
+                        }
+
+                    },
+
+                    // Simplifications de deux additions à la suite (x+2)+3 = (x+5)
                     (
                         VarContent { source: Source::Maths(MathsKind::Add, additions ), content: old_content },
                         VarContent { content : Content::Value(new_value), .. },
                     ) if kind == MathsKind::Add => {
-                        let mut found_value = false;
+                        append_values_to_contents(kind, additions, old_content, &vec![get_var_content_from_value(*new_value)])
+                    },
+                    (
+                        VarContent { content : Content::Value(new_value), .. },
+                        VarContent { source: Source::Maths(MathsKind::Add, additions ), content: old_content },
+                    ) if kind == MathsKind::Add => {
+                        append_values_to_contents(kind, additions, old_content, &vec![get_var_content_from_value(*new_value)])
+                    },
 
-                        for &mut addition in additions.iter_mut() {
+                    // Simplifications d'une addition de deux additions (x+2)+(y+4) = (x+y+6)
+                    (
+                        VarContent { source: Source::Maths(MathsKind::Add, left_additions ), content: left_content },
+                        VarContent { source: Source::Maths(MathsKind::Add, right_additions ), .. },
+                    ) if kind == MathsKind::Add => {
+                        append_values_to_contents(kind, left_additions, left_content, right_additions)
+                    },
+
+                    // Simplification d'un multiplication d'une addition par un chiffre (x+y+2)*3 = (x*3)+(y*3)+6
+                    (
+                        VarContent { source: Source::Maths(MathsKind::Add, additions ), .. },
+                        VarContent { content : Content::Value(right_value), .. },
+                    ) if kind == MathsKind::Mul => {
+                        let mut new_additions = Vec::with_capacity(additions.len());
+                        let mut new_content = None;
+                        for addition in additions {
+                            if let Some(content) = new_content {
+                                new_content = Some(merge_content(MathsKind::Mul, &content, &Content::Value(*right_value)));
+                            } else {
+                                new_content = Some(merge_content(MathsKind::Mul, &addition.content, &Content::Value(*right_value)));
+                            }
+
                             if let VarContent { content: Content::Value(value), .. } = addition {
-                                found_value = true;
-                                addition = get_var_content_from_value(value + new_value);
+                                new_additions.push(get_var_content_from_value(value * right_value));
+                            } else {
+                                new_additions.push(merge_var_contents(MathsKind::Mul, addition.clone(), get_var_content_from_value(*right_value)));
                             }
                         }
 
-                        if ! found_value {
-                            additions.push(get_var_content_from_value(*new_value));
-                        }
-
-                        VarContent {
-                            source: Source::Maths(MathsKind::Add, *additions ),
-                            content: merge_content(MathsKind::Add, old_content, &Content::Value(*new_value))
-                        }
+                        VarContent { source: Source::Maths(MathsKind::Add, new_additions ), content: new_content.unwrap() }
                     },
-
-                    // Simplifications d'une addition de deux additions (x+2)+(y+4) = (x+y)+6
-                    // (
-                    //     VarContent { source: Source::Maths(MathsKind::Add, inner_left_left, inner_left_right ), .. },
-                    //     VarContent { source: Source::Maths(MathsKind::Add, inner_right_left, inner_right_right ), .. },
-                    // ) if kind == MathsKind::Add => {
-                    //     if let VarContent { content: Content::Value(inner_left_right_value), .. } = **inner_left_right {
-                    //         if let VarContent { content: Content::Value(inner_right_right_value), .. } = **inner_right_right {
-                    //             let new_left  = merge_var_contents(MathsKind::Add, *inner_left_left.clone(), *inner_right_left.clone());
-
-                    //             merge_var_contents(kind, new_left, get_var_content_from_value(inner_left_right_value + inner_right_right_value))
-                    //         } else {
-                    //             merge_var_contents(kind, left, right)
-                    //         }
-                    //     } else {
-                    //         merge_var_contents(kind, left, right)
-                    //     }
-                    // },
-
-                    // // Simplification d'un multiplication d'une addition par un chiffre (x+2)*3 = (x*3)+6
-                    // (
-                    //     VarContent { source: Source::Maths(MathsKind::Add, inner_left, inner_right ), .. },
-                    //     VarContent { content : Content::Value(right_value), .. },
-                    // ) if kind == MathsKind::Mul => {
-                    //     if let VarContent { content: Content::Value(previous_add), .. } = **inner_right {
-                    //         let new_left  = merge_var_contents(MathsKind::Mul, *inner_left.clone(), get_var_content_from_value(*right_value));
-                    //         let new_right = get_var_content_from_value(previous_add * right_value);
-
-                    //         merge_var_contents(MathsKind::Add, new_left, new_right)
-                    //     } else {
-                    //         merge_var_contents(kind, left, right)
-                    //     }
-                    // },
 
                     _ => merge_var_contents(kind, left, right),
                 }
@@ -251,6 +286,31 @@ fn merge_var_contents(kind: MathsKind, left: VarContent, right: VarContent) -> V
     VarContent { content, source: Source::Maths(kind, vec![left, right]) }
 }
 
+
+fn append_values_to_contents(kind: MathsKind, previous_values: &Vec<VarContent>, old_content: &Content, new_values: &Vec<VarContent>) -> VarContent
+{
+    let mut content = old_content.clone();
+    let mut values = previous_values.clone();
+
+    'main_loop: for value in new_values {
+        if let VarContent { content: Content::Value(real_value), .. } = value {
+            for previous_value in values.iter_mut() {
+                if let VarContent { content: Content::Value(previous_real_value), .. } = previous_value {
+                    *previous_value = get_var_content_from_value(kind.execute(*previous_real_value, *real_value));
+                    content = merge_content(kind, &content, &value.content);
+
+                    continue 'main_loop;
+                }
+            }
+        } 
+        
+        values.push(value.clone());
+        content = merge_content(kind, &content, &value.content);
+
+    }
+
+    VarContent { source: Source::Maths(kind, values), content }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 struct VarContent {
@@ -813,29 +873,28 @@ fn print(var_content: &VarContent, deep: usize, max: usize, first: bool)
     match &var_content.source {
         Source::Value(digit) => print!("{}Valeur `{}`", prefix, digit),
         Source::Inp(index) => print!("{}Input n°{}", prefix, index + 1),
-        Source::Maths(kind, left, right) => {
-            if deep < max {
-                println!("{}(", prefix);
-                print(left, deep + 1, max, false);
-                println!();
-                print!("{})", prefix);
-            } else {
-                print!("{}…", prefix);
-            }
-
-            print!(" ");
-            print_maths_kind(*kind);
-            print!(" ");
+        Source::Maths(kind, values) => {
+            let mut first_value = true;
             
-            if deep < max {
-                println!("(");
-                print(right, deep + 1, max, false);
-                println!();
-                print!("{})", prefix);
-            } else {
-                print!("…");
-            }
+            for value in values {
+                if first_value {
+                    first_value = false;
+                    print!("{}", prefix);
+                } else {
+                    print!(" ");
+                    print_maths_kind(*kind);
+                    print!(" ");
+                }
 
+                if deep < max {
+                    println!("(");
+                    print(value, deep + 1, max, false);
+                    println!();
+                    print!("{})", prefix);
+                } else {
+                    print!("{}…", prefix);
+                }
+            }
         }
     }
 
@@ -864,7 +923,13 @@ fn content_as_string(content: &Content) -> String
         Content::Options(options) => {
             let options_as_strings: Vec<String> = options.iter().map(|option| option.to_string()).collect();
 
-            format!("Options: {}", options_as_strings.join(", "))
+            if options_as_strings.len() > 10 {
+                let left = options_as_strings.iter().take(5).cloned().collect::<Vec<String>>().join(", ");
+                let right = options_as_strings.iter().rev().take(5).cloned().collect::<Vec<String>>().join(", ");
+                format!("Options: {} … {}", left, right)
+            } else {
+                format!("Options: {}", options_as_strings.join(", "))
+            }
         },
     }
 }
